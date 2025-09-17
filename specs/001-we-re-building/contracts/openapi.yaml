@@ -1,0 +1,775 @@
+openapi: 3.0.3
+info:
+  title: Renewable Energy PDF Processing Pipeline API
+  description: API for uploading, processing, and querying renewable energy PDF documents
+  version: 1.0.0
+  contact:
+    name: API Support
+servers:
+  - url: https://api.renewable-docs.example.com
+    description: Production server
+  - url: https://staging-api.renewable-docs.example.com
+    description: Staging server
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /documents:
+    post:
+      summary: Upload a PDF document for processing
+      description: Upload a renewable energy PDF document for asynchronous processing and indexing
+      operationId: uploadDocument
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Optional idempotency key to prevent duplicate uploads
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: PDF file to upload (max 150MB, max 300 pages)
+                metadata:
+                  type: string
+                  description: JSON string with document metadata
+                  example: '{"title":"Solar Report","tags":["solar","efficiency"],"source_url":"https://example.com/report.pdf","uploaded_by":"user@example.com"}'
+              required:
+                - file
+            encoding:
+              metadata:
+                contentType: application/json
+      responses:
+        '201':
+          description: Document uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentUploadResponse'
+        '400':
+          description: Invalid request (file too large, wrong format, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: Payload too large (file exceeds 150MB limit)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported media type (not a PDF)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Unprocessable entity (invalid PDF structure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Account quota exceeded (200 documents max)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /jobs/{job_id}:
+    get:
+      summary: Get processing job status
+      description: Retrieve the current status and progress of a document processing job
+      operationId: getJobStatus
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique job identifier returned from document upload
+      responses:
+        '200':
+          description: Job status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatusResponse'
+        '404':
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /search:
+    get:
+      summary: Search across indexed documents
+      description: Perform hybrid retrieval across text, tables, images, and charts in processed documents
+      operationId: searchDocuments
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 500
+          description: Search query string
+        - name: content_types
+          in: query
+          required: false
+          style: form
+          explode: false
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [text, table, chart, image, title, metadata]
+          description: Filter by content types (CSV format)
+        - name: document_ids
+          in: query
+          required: false
+          style: form
+          explode: false
+          schema:
+            type: array
+            items:
+              type: string
+              format: uuid
+          description: Filter by specific document IDs (CSV format)
+        - name: page_range
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: '^\d+-\d+$'
+          description: Filter by page range (e.g., "1-10")
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Maximum number of results to return
+        - name: min_confidence
+          in: query
+          required: false
+          schema:
+            type: number
+            minimum: 0.0
+            maximum: 1.0
+            default: 0.0
+          description: Minimum confidence score for results
+      responses:
+        '200':
+          description: Search results retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        '400':
+          description: Invalid search parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests (rate limit exceeded)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /qa:
+    post:
+      summary: Question answering with grounded evidence
+      description: Get answers to questions grounded in retrieved evidence with page-anchored citations
+      operationId: answerQuestion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionRequest'
+      responses:
+        '200':
+          description: Answer generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests (rate limit exceeded)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /documents/{document_id}:
+    get:
+      summary: Get document metadata and status
+      description: Retrieve document metadata, processing status, and basic information
+      operationId: getDocument
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique document identifier
+      responses:
+        '200':
+          description: Document metadata retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '404':
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete a document and its indexed content
+      description: Mark a document for deletion 
+      operationId: deleteDocument
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique document identifier
+      responses:
+        '202':
+          description: Document marked for deletion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletionResponse'
+        '404':
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /healthz:
+    get:
+      summary: Health check endpoint
+      description: Check API service health status (unauthenticated health probe)
+      operationId: healthCheck
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Service is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /metrics:
+    get:
+      summary: Prometheus metrics endpoint
+      description: Metrics in Prometheus format for monitoring
+      operationId: getMetrics
+      responses:
+        '200':
+          description: Metrics retrieved successfully
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    DocumentUploadResponse:
+      type: object
+      properties:
+        document_id:
+          type: string
+          format: uuid
+          description: Unique document identifier
+        job_id:
+          type: string
+          format: uuid
+          description: Processing job identifier
+        filename:
+          type: string
+          description: Original filename
+        file_size:
+          type: integer
+          description: File size in bytes
+        status:
+          type: string
+          enum: [uploaded, queued]
+          description: Initial processing status
+        upload_time:
+          type: string
+          format: date-time
+          description: Upload timestamp
+      required:
+        - document_id
+        - job_id
+        - filename
+        - file_size
+        - status
+        - upload_time
+
+    JobStatusResponse:
+      type: object
+      properties:
+        job_id:
+          type: string
+          format: uuid
+          description: Job identifier
+        document_id:
+          type: string
+          format: uuid
+          description: Associated document ID
+        status:
+          type: string
+          enum: [pending, running, completed, failed, retrying]
+          description: Current job status
+        progress_percentage:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Completion percentage
+        started_at:
+          type: string
+          format: date-time
+          description: Processing start time
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Processing completion time
+        error_message:
+          type: string
+          nullable: true
+          description: Error details if failed
+        error_type:
+          type: string
+          enum: [validation_error, processing_error, storage_error, quota_exceeded, system_error]
+          nullable: true
+          description: Error category
+        retry_count:
+          type: integer
+          description: Number of retry attempts
+      required:
+        - job_id
+        - document_id
+        - status
+        - progress_percentage
+        - started_at
+        - retry_count
+
+    SearchResponse:
+      type: object
+      properties:
+        query:
+          type: string
+          description: Original search query
+        total_results:
+          type: integer
+          description: Total number of matching results
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchResult'
+          description: Ranked search results
+        filters_applied:
+          type: object
+          description: Filters that were applied to the search
+      required:
+        - query
+        - total_results
+        - results
+
+    SearchResult:
+      type: object
+      properties:
+        content_id:
+          type: string
+          format: uuid
+          description: Unique content identifier
+        document_id:
+          type: string
+          format: uuid
+          description: Source document ID
+        document_title:
+          type: string
+          description: Document title or filename
+        page_number:
+          type: integer
+          description: Page location in document
+        content_type:
+          type: string
+          enum: [text, table, chart, image, title, metadata]
+          description: Type of content
+        snippet:
+          type: string
+          description: Relevant content snippet
+        confidence_score:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: Extraction confidence
+        relevance_score:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: Relevance to query
+        is_ocr_generated:
+          type: boolean
+          description: Whether content came from OCR
+        metadata:
+          type: object
+          description: Content-specific metadata
+        thumbnail_url:
+          type: string
+          nullable: true
+          description: Pre-signed, time-limited URL to visual content thumbnail
+      required:
+        - content_id
+        - document_id
+        - document_title
+        - page_number
+        - content_type
+        - snippet
+        - confidence_score
+        - relevance_score
+        - is_ocr_generated
+
+    QuestionRequest:
+      type: object
+      properties:
+        question:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Question to answer
+        context_filters:
+          type: object
+          properties:
+            document_ids:
+              type: array
+              items:
+                type: string
+                format: uuid
+              description: Limit search to specific documents
+            content_types:
+              type: array
+              items:
+                type: string
+                enum: [text, table, chart, image, title, metadata]
+              description: Filter by content types
+            date_range:
+              type: object
+              properties:
+                start_date:
+                  type: string
+                  format: date
+                end_date:
+                  type: string
+                  format: date
+              description: Filter by document date range
+        include_thumbnails:
+          type: boolean
+          default: false
+          description: Include visual content thumbnails in response
+        max_citations:
+          type: integer
+          minimum: 1
+          maximum: 20
+          default: 5
+          description: Maximum number of citations to include
+      required:
+        - question
+
+    QuestionResponse:
+      type: object
+      properties:
+        question:
+          type: string
+          description: Original question
+        answer:
+          type: string
+          description: Generated answer or "No evidence found"
+        confidence:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: Answer confidence score
+        citations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Citation'
+          description: Supporting evidence citations
+        refinement_hints:
+          type: array
+          items:
+            type: string
+          description: Suggestions for improving the query
+        processing_time_ms:
+          type: integer
+          description: Response generation time in milliseconds
+      required:
+        - question
+        - answer
+        - confidence
+        - citations
+
+    Citation:
+      type: object
+      properties:
+        document_title:
+          type: string
+          description: Source document title
+        page_number:
+          type: integer
+          description: Page reference
+        content_type:
+          type: string
+          enum: [text, table, chart, image, title, metadata]
+          description: Type of cited content
+        snippet:
+          type: string
+          description: Relevant content excerpt
+        context:
+          type: string
+          nullable: true
+          description: Surrounding context
+        confidence_score:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: Content extraction confidence
+        relevance_score:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: Relevance to question
+        is_ocr_generated:
+          type: boolean
+          description: Whether content came from OCR
+        thumbnail_url:
+          type: string
+          nullable: true
+          description: Pre-signed, time-limited URL to visual content thumbnail
+      required:
+        - document_title
+        - page_number
+        - content_type
+        - snippet
+        - confidence_score
+        - relevance_score
+        - is_ocr_generated
+
+    DocumentResponse:
+      type: object
+      properties:
+        document_id:
+          type: string
+          format: uuid
+          description: Unique document identifier
+        filename:
+          type: string
+          description: Original filename
+        file_size:
+          type: integer
+          description: File size in bytes
+        page_count:
+          type: integer
+          nullable: true
+          description: Number of pages (available after processing)
+        processing_status:
+          type: string
+          enum: [uploaded, queued, processing, completed, failed, deleted]
+          description: Current processing status
+        upload_time:
+          type: string
+          format: date-time
+          description: Upload timestamp
+        metadata:
+          type: object
+          nullable: true
+          description: Document metadata (title, tags, source_url, uploaded_by)
+      required:
+        - document_id
+        - filename
+        - file_size
+        - processing_status
+        - upload_time
+
+    DeletionResponse:
+      type: object
+      properties:
+        document_id:
+          type: string
+          format: uuid
+          description: Document identifier
+        status:
+          type: string
+          enum: [marked_for_deletion]
+          description: Deletion status
+        deletion_scheduled_at:
+          type: string
+          format: date-time
+          description: When deletion will be completed
+        message:
+          type: string
+          description: Deletion confirmation message
+      required:
+        - document_id
+        - status
+        - deletion_scheduled_at
+        - message
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy]
+          description: Service health status
+        timestamp:
+          type: string
+          format: date-time
+          description: Health check timestamp
+        version:
+          type: string
+          description: API version
+        dependencies:
+          type: object
+          properties:
+            database:
+              type: string
+              enum: [healthy, unhealthy]
+            vector_store:
+              type: string
+              enum: [healthy, unhealthy]
+            storage:
+              type: string
+              enum: [healthy, unhealthy]
+            queue:
+              type: string
+              enum: [healthy, unhealthy]
+      required:
+        - status
+        - timestamp
+        - version
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              description: Machine-readable error code
+            message:
+              type: string
+              description: Human-readable error message
+            details:
+              type: object
+              description: Additional error context
+            request_id:
+              type: string
+              description: Unique request identifier for debugging
+          required:
+            - code
+            - message
+      required:
+        - error
+
+tags:
+  - name: Documents
+    description: Document upload and management operations
+  - name: Jobs
+    description: Processing job status and monitoring
+  - name: Search
+    description: Content search and retrieval operations
+  - name: Q&A
+    description: Question answering with evidence
+  - name: Health
+    description: Service health and monitoring
