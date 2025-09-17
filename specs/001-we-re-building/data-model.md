@@ -247,17 +247,18 @@ pending -> running -> [completed | failed]
 - `quality_metrics(document_id)` for SLA monitoring
 
 ### Vector Database Collections
-- Collection per account: `account_{account_id}`
+- Collection per account: `account_{account_id}` (optional for demo; single-tenant acceptable)
 - Payload filters: document_id, content_type, page_number, confidence_score
 - Embedding dimensions: 384 (sentence-transformers default)
 
 ## Data Retention and Cleanup
 
 ### Document Deletion Process
-1. Immediate hard delete of S3 objects (original PDF + extracted assets)
-2. Immediate hard delete of vector embeddings from Qdrant
-3. Immediate hard delete of content and embeddings from database
-4. Retain audit-only identifiers and timestamps for traceability
+1. Set Document status=deleted for audit messaging
+2. Immediate hard delete of S3 objects (original PDF + extracted assets)
+3. Immediate hard delete of vector embeddings from Qdrant
+4. Immediate hard delete of content and embeddings from database
+5. Retain audit-only identifiers and timestamps for traceability
 
 ### Temporary Data Cleanup
 - Failed job artifacts cleaned after 7 days

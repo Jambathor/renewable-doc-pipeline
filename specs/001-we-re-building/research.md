@@ -84,7 +84,7 @@
 - PostgreSQL with pgvector (limited vector search capabilities)
 
 **Implementation approach**:
-- Collections organized by account/document for isolation
+- Collections organized by account/document for isolation (optional for demo; single-tenant acceptable)
 - Rich metadata in payloads: doc_id, page, content_type, bbox, confidence, ocr_flag
 - Hybrid search combining vector similarity and metadata filters
 - Embedding strategy: sentence transformers via LlamaIndex

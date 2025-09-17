@@ -71,6 +71,7 @@ Researchers and analysts need to quickly find specific information about renewab
 - **Poor-Quality Charts/Images**: System ingests content but labels as low confidence; avoids numeric extraction from low-confidence visual content
 - **Cross-Type Content Matches**: System ranks results by evidence strength and labels each result with content type and page reference
 - **No Relevant Information**: System returns "No evidence found" message with brief refinement hints to help user adjust their query
+- **Immediate Deletion**: For demo purposes, immediate hard delete is acceptable and falls within the "within 24 hours" envelope
 
 ## Requirements *(mandatory)*
 
@@ -79,21 +80,21 @@ Researchers and analysts need to quickly find specific information about renewab
 #### Core Processing
 - **FR-001**: System MUST ingest PDF documents containing renewable energy content via API endpoints
 - **FR-002**: System MUST extract text content from PDFs while preserving formatting and structure
-- **FR-003**: System MUST identify and extract tabular data from PDFs with ≥90% success rate for identifiable tables
+- **FR-003**: System MUST identify and extract tabular data from PDFs with >=90% success rate for identifiable tables
 - **FR-004**: System MUST detect and extract charts, graphs, and images from PDFs
 - **FR-005**: System MUST create searchable index of all extracted content types
-- **FR-006**: System MUST maintain page-level anchors for ≥95% of pages in processed documents
+- **FR-006**: System MUST maintain page-level anchors for >=95% of pages in processed documents
 
 #### Query and Response
 - **FR-007**: System MUST support multimodal queries via API that can reference text, data, and visual content
 - **FR-008**: System MUST provide accurate citations showing document source, page number, and content location
 - **FR-009**: System MUST include visual context (charts/images) in query responses when relevant
-- **FR-010**: System MUST ensure ≥95% of answers include at least one correct document title and page reference
+- **FR-010**: System MUST ensure >=95% of answers include at least one correct document title and page reference
 - **FR-011**: System MUST return "No evidence found" with refinement hints when no relevant information exists
 - **FR-012**: System MUST rank cross-type content matches by evidence strength and label content type and page
 
 #### Processing Workflow
-- **FR-013**: System MUST process document ingestion asynchronously after API submission (may be implemented with in-process background tasks for demo)
+- **FR-013**: System MUST process document ingestion asynchronously after API submission (in-process background tasks for demo)
 - **FR-014**: System MUST expose job status and progress via API endpoints
 - **FR-015**: System MUST fail completely for corrupted or password-protected PDFs with clear error reasons
 - **FR-016**: System MUST ingest poor-quality charts/images but label them as low confidence
@@ -107,7 +108,7 @@ Researchers and analysts need to quickly find specific information about renewab
 #### Authentication and Security
 - **FR-021**: System MUST require single API key on all endpoints except /healthz (public health probe)
 - **FR-022**: System MUST validate API key on every authenticated request
-- **FR-023**: System MAY apply rate limiting to /search and /qa endpoints; clients should handle HTTP 429 gracefully
+- **FR-023**: System MAY apply rate limiting to /search and /qa endpoints; clients should handle HTTP 429 gracefully with retry backoff
 
 #### Data Management
 - **FR-024**: System MUST retain processed content until owner requests deletion

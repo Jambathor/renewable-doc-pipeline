@@ -11,7 +11,7 @@ This quickstart guide demonstrates the complete workflow of the renewable energy
 ## Prerequisites
 
 - Valid API key with account limits (200 documents max)
-- Sample renewable energy PDF files (≤150MB, ≤300 pages each)
+- Sample renewable energy PDF files (<=150MB, <=300 pages each)
 - HTTP client (curl, Postman, or similar)
 - Base URL: `https://api.renewable-docs.example.com`
 
@@ -115,6 +115,33 @@ curl -X GET https://api.renewable-docs.example.com/jobs/6ba7b810-9dad-11d1-80b4-
 - ✅ completed_at timestamp populated on success
 - ✅ No error messages or retry attempts
 
+## Step 3.5: Get Document Metadata
+
+Retrieve document metadata and processing status.
+
+```bash
+curl -X GET https://api.renewable-docs.example.com/documents/550e8400-e29b-41d4-a716-446655440000 \
+  -H "X-API-Key: your-api-key-here"
+```
+
+**Expected Response:**
+```json
+{
+  "document_id": "550e8400-e29b-41d4-a716-446655440000",
+  "filename": "solar-panel-efficiency-report.pdf",
+  "file_size": 2457600,
+  "page_count": 42,
+  "processing_status": "completed",
+  "upload_time": "2025-09-17T10:01:00Z",
+  "metadata": {
+    "title": "Solar Panel Efficiency Report 2024",
+    "tags": ["solar", "efficiency", "california"],
+    "source_url": "https://example.com/report.pdf",
+    "uploaded_by": "researcher@company.com"
+  }
+}
+```
+
 ## Step 4: Search Indexed Content
 
 Search across the processed document content.
@@ -173,6 +200,8 @@ curl -X GET "https://api.renewable-docs.example.com/search?query=solar%20panel%2
 ```
 
 **Note**: Thumbnail URLs are pre-signed and expire after a limited time for security.
+
+**Rate Limiting**: The /search and /qa endpoints MAY return HTTP 429 if rate limits are exceeded. Clients should implement retry with exponential backoff.
 
 **Validation Points:**
 - ✅ Results ranked by relevance score

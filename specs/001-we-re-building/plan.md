@@ -40,9 +40,9 @@ Build an API-only renewable energy PDF processing pipeline using Python 3.11, Fa
 **Testing**: pytest (unit/integration), contract testing for REST APIs  
 **Target Platform**: AWS ECS Fargate (Linux containers), ECR for images
 **Project Type**: single (API-only backend service with worker service)  
-**Performance Goals**: Process ≤150MB PDFs with ≤300 pages, support up to 200 PDFs per account  
-**Constraints**: ≥95% page anchoring accuracy, ≥90% table extraction success, ≥95% citation correctness  
-**Scale/Scope**: Demo-grade with observability (OpenTelemetry, Prometheus, Grafana), GitHub Actions CI/CD
+**Performance Goals**: Process <=150MB PDFs with <=300 pages, support up to 200 PDFs per account  
+**Constraints**: >=95% page anchoring accuracy, >=90% table extraction success, >=95% citation correctness  
+**Scale/Scope**: Demo-grade with observability (single /metrics endpoint, basic Grafana alert), GitHub Actions CI/CD; async processing defaults to in-process background tasks (SQS/ECS workers optional for future)
 
 ## Constitution Check
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
@@ -51,7 +51,7 @@ Build an API-only renewable energy PDF processing pipeline using Python 3.11, Fa
 **Pipeline Interface**: ✅ Clear input/output: PDFs in → indexed content out via REST API  
 **Test-First (NON-NEGOTIABLE)**: ✅ TDD approach planned with contract tests before implementation  
 **Integration Testing**: ✅ Pipeline stage contracts, document transformations, end-to-end flows  
-**Observability & Simplicity**: ✅ OpenTelemetry logging, simple REST interface, structured JSON I/O  
+**Observability & Simplicity**: ✅ Single /metrics endpoint with basic Grafana alert, simple REST interface, structured JSON I/O (OpenTelemetry optional for future)  
 **Security & Performance**: ✅ API key auth, no sensitive logging, efficient processing for large docs  
 **Development Workflow**: ✅ All changes require tests and docs, constitution compliance verified
 

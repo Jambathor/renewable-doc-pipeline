@@ -24,17 +24,20 @@ src/
 ├── api/             # FastAPI routes, request/response handling
 ├── storage/         # S3 and Qdrant integrations
 ├── ocr/             # OCR processing pipelines
-└── monitoring/      # OpenTelemetry, metrics collection
+├── monitoring/      # OpenTelemetry, metrics collection
+└── config/          # Settings, environment config
 
 tests/
 ├── contract/        # API contract tests (OpenAPI validation)
 ├── integration/     # End-to-end workflow tests
-└── unit/           # Component unit tests
+├── unit/           # Component unit tests
+└── fixtures/        # Pytest fixtures
 
 infrastructure/
 ├── terraform/       # Minimal Terraform config (single root)
-├── docker/         # Container definitions
 └── monitoring/     # Grafana dashboards, Prometheus config
+
+docker/              # Container definitions (top-level)
 
 specs/
 └── 001-we-re-building/  # Current feature documentation
@@ -70,9 +73,10 @@ terraform init
 terraform plan -var-file="environments/dev.tfvars"
 terraform apply -var-file="environments/dev.tfvars"
 
+# Note: If environments/dev.tfvars is not present, either create it (see tasks.md) or run plan/apply without -var-file
+
 # Docker builds
 docker build -f docker/Dockerfile.api -t renewable-pipeline-api .
-docker build -f docker/Dockerfile.worker -t renewable-pipeline-worker .
 
 # Deploy to AWS
 aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin
@@ -144,11 +148,18 @@ class ProcessingError(PipelineError):
 ## Design Notes
 
 **Demo Mode Considerations**:
-- Async processing may use in-process background tasks instead of SQS
+- Async processing uses in-process background tasks ("queue" in /healthz dependencies maps to the background task runner)
 - Document deletion performs immediate hard delete while preserving API semantics
 - Rate limiting on /search and /qa endpoints; clients should handle HTTP 429
+- /metrics endpoint requires X-API-Key header outside local environment
 
-**Consistency Guardrails**:
+**Configuration**:
+- `STORAGE_BACKEND=local` (demo/tests) or `s3` (cloud deployment)
+- Keep secrets out of repo; sample .env keys listed, no secrets committed
+- Example .env variables: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `QDRANT_URL`, `DATABASE_URL`
+
+**Development Pitfalls**:
+- Avoid naming files `logging.py` (stdlib shadowing); prefer `request_logging.py`
 - Use lowercase enum values everywhere (wire format and DB storage)
 - All examples must use UUID format for content_id fields
 - Array query parameters use CSV format
