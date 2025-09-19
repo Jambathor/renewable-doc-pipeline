@@ -13,23 +13,24 @@ Validation Points:
 - UUID format validation for document_ids
 - Proper error response structure for all error cases
 """
-import pytest
 import json
 import uuid
-from typing import Dict, Any
+from typing import Any, Dict
+
 import httpx
-from jsonschema import validate, ValidationError, FormatChecker
-from openapi_spec_validator import validate_spec
+import pytest
 import yaml
+from jsonschema import FormatChecker, ValidationError, validate
+from openapi_spec_validator import validate_spec
 
 
 @pytest.fixture
 def openapi_spec():
     """Load and validate OpenAPI specification."""
     spec_path = "/home/jambapro/projects/Yassine/renewable-doc-pipeline/specs/001-we-re-building/contracts/openapi.yaml"
-    with open(spec_path, "r") as f:
+    with open(spec_path) as f:
         spec = yaml.safe_load(f)
-    
+
     # Validate the spec itself is valid OpenAPI
     validate_spec(spec)
     return spec
@@ -114,7 +115,7 @@ class TestQARequestValidation:
     def test_invalid_question_length_too_short(self, qa_request_schema):
         """Test validation fails for question shorter than minLength."""
         invalid_request = {"question": ""}  # Empty string violates minLength: 1
-        
+
         with pytest.raises(ValidationError):
             validate(instance=invalid_request, schema=qa_request_schema, format_checker=FormatChecker())
 
@@ -122,7 +123,7 @@ class TestQARequestValidation:
     def test_invalid_question_length_too_long(self, qa_request_schema):
         """Test validation fails for question longer than maxLength."""
         invalid_request = {"question": "x" * 1001}  # Exceeds maxLength: 1000
-        
+
         with pytest.raises(ValidationError):
             validate(instance=invalid_request, schema=qa_request_schema, format_checker=FormatChecker())
 
@@ -135,7 +136,7 @@ class TestQARequestValidation:
                 "document_ids": ["not-a-uuid", "also-not-uuid"]
             }
         }
-        
+
         with pytest.raises(ValidationError):
             validate(instance=invalid_request, schema=qa_request_schema, format_checker=FormatChecker())
 
@@ -147,16 +148,16 @@ class TestQARequestValidation:
             "question": "Valid question?",
             "max_citations": 0  # Below minimum: 1
         }
-        
+
         with pytest.raises(ValidationError):
             validate(instance=invalid_request_min, schema=qa_request_schema)
-        
+
         # Test above maximum
         invalid_request_max = {
             "question": "Valid question?",
             "max_citations": 21  # Above maximum: 20
         }
-        
+
         with pytest.raises(ValidationError):
             validate(instance=invalid_request_max, schema=qa_request_schema)
 
@@ -169,9 +170,9 @@ class TestQAEndpointContract:
         """Test that POST /qa endpoint exists and returns expected status codes."""
         # This test will FAIL initially as the endpoint is not implemented
         # Expected to fail with 404 Not Found until endpoint is implemented
-        
+
         response = api_client.post("/qa", json=valid_question_request)
-        
+
         # According to OpenAPI spec, valid responses are: 200, 400, 401, 429
         expected_status_codes = [200, 400, 401, 429]
         assert response.status_code in expected_status_codes, (
@@ -183,13 +184,13 @@ class TestQAEndpointContract:
     def test_qa_successful_response_schema(self, api_client, valid_question_request, qa_response_schema):
         """Test successful Q&A response conforms to QuestionResponse schema."""
         # This will FAIL until endpoint is implemented and returns 200
-        
+
         response = api_client.post("/qa", json=valid_question_request)
-        
+
         if response.status_code == 200:
             response_data = response.json()
             validate(instance=response_data, schema=qa_response_schema, format_checker=FormatChecker())
-            
+
             # Additional contract validations
             assert "question" in response_data
             assert "answer" in response_data
@@ -203,13 +204,13 @@ class TestQAEndpointContract:
         """Test 400 error response conforms to ErrorResponse schema."""
         # Send invalid request to trigger 400 error
         invalid_request = {"question": ""}  # Empty question violates minLength
-        
+
         response = api_client.post("/qa", json=invalid_request)
-        
+
         if response.status_code == 400:
             response_data = response.json()
             validate(instance=response_data, schema=error_response_schema, format_checker=FormatChecker())
-            
+
             # Verify error structure
             assert "error" in response_data
             assert "code" in response_data["error"]
@@ -220,10 +221,10 @@ class TestQAEndpointContract:
         """Test 401 error response conforms to ErrorResponse schema."""
         # Client without API key
         unauthorized_client = httpx.Client(base_url="http://localhost:8000", timeout=30.0)
-        
+
         valid_request = {"question": "What is renewable energy?"}
         response = unauthorized_client.post("/qa", json=valid_request)
-        
+
         if response.status_code == 401:
             response_data = response.json()
             validate(instance=response_data, schema=error_response_schema, format_checker=FormatChecker())
@@ -232,16 +233,16 @@ class TestQAEndpointContract:
     def test_qa_citation_schema_validation(self, api_client, valid_question_request, citation_schema):
         """Test that citations in response conform to Citation schema."""
         # This will FAIL until endpoint is implemented
-        
+
         response = api_client.post("/qa", json=valid_question_request)
-        
+
         if response.status_code == 200:
             response_data = response.json()
             citations = response_data.get("citations", [])
-            
+
             for citation in citations:
                 validate(instance=citation, schema=citation_schema, format_checker=FormatChecker())
-                
+
                 # Verify required Citation fields
                 assert "document_title" in citation
                 assert "page_number" in citation
@@ -250,11 +251,11 @@ class TestQAEndpointContract:
                 assert "confidence_score" in citation
                 assert "relevance_score" in citation
                 assert "is_ocr_generated" in citation
-                
+
                 # Verify score ranges
                 assert 0.0 <= citation["confidence_score"] <= 1.0
                 assert 0.0 <= citation["relevance_score"] <= 1.0
-                
+
                 # Verify content_type enum
                 valid_content_types = ["text", "table", "chart", "image", "title", "metadata"]
                 assert citation["content_type"] in valid_content_types
@@ -263,9 +264,9 @@ class TestQAEndpointContract:
     def test_qa_response_processing_time_field(self, api_client, valid_question_request):
         """Test that response includes processing_time_ms field."""
         # This will FAIL until endpoint is implemented
-        
+
         response = api_client.post("/qa", json=valid_question_request)
-        
+
         if response.status_code == 200:
             response_data = response.json()
             assert "processing_time_ms" in response_data
@@ -276,9 +277,9 @@ class TestQAEndpointContract:
     def test_qa_response_content_type_header(self, api_client, valid_question_request):
         """Test that response has correct Content-Type header."""
         # This will FAIL until endpoint is implemented
-        
+
         response = api_client.post("/qa", json=valid_question_request)
-        
+
         if response.status_code in [200, 400, 401, 429]:
             assert response.headers.get("content-type") == "application/json"
 
@@ -286,13 +287,13 @@ class TestQAEndpointContract:
     def test_qa_max_citations_respected(self, api_client, valid_question_request):
         """Test that response respects max_citations parameter."""
         # This will FAIL until endpoint is implemented
-        
+
         # Test with max_citations = 3
         request_with_limit = valid_question_request.copy()
         request_with_limit["max_citations"] = 3
-        
+
         response = api_client.post("/qa", json=request_with_limit)
-        
+
         if response.status_code == 200:
             response_data = response.json()
             citations = response_data.get("citations", [])
@@ -308,13 +309,13 @@ class TestQAEndpointContract:
                 "document_ids": [str(uuid.uuid4()), str(uuid.uuid4())]
             }
         }
-        
+
         # This should not raise ValidationError
         validate(instance=request_with_valid_uuids, schema=qa_request_schema, format_checker=FormatChecker())
-        
+
         # This request should be accepted by the API (when implemented)
         response = api_client.post("/qa", json=request_with_valid_uuids)
-        
+
         # The test will fail here until endpoint exists, but validates UUID format requirement
         if response.status_code in [200, 400, 401, 429]:
             # If we get a response, UUID format was accepted
@@ -329,19 +330,19 @@ class TestQAEndpointOpenAPICompliance:
         """Test that OpenAPI spec properly defines /qa POST endpoint."""
         assert "/qa" in openapi_spec["paths"]
         assert "post" in openapi_spec["paths"]["/qa"]
-        
+
         qa_endpoint = openapi_spec["paths"]["/qa"]["post"]
-        
+
         # Verify endpoint metadata
         assert "summary" in qa_endpoint
         assert "description" in qa_endpoint
         assert "operationId" in qa_endpoint
         assert qa_endpoint["operationId"] == "answerQuestion"
-        
+
         # Verify request body specification
         assert "requestBody" in qa_endpoint
         assert qa_endpoint["requestBody"]["required"] is True
-        
+
         request_content = qa_endpoint["requestBody"]["content"]
         assert "application/json" in request_content
         assert "$ref" in request_content["application/json"]["schema"]
@@ -351,17 +352,17 @@ class TestQAEndpointOpenAPICompliance:
     def test_openapi_spec_defines_qa_responses(self, openapi_spec):
         """Test that OpenAPI spec properly defines Q&A responses."""
         qa_responses = openapi_spec["paths"]["/qa"]["post"]["responses"]
-        
+
         # Check required response codes
         required_responses = ["200", "400", "401", "429"]
         for status_code in required_responses:
             assert status_code in qa_responses
-            
+
             response_spec = qa_responses[status_code]
             assert "description" in response_spec
             assert "content" in response_spec
             assert "application/json" in response_spec["content"]
-            
+
             schema_ref = response_spec["content"]["application/json"]["schema"]["$ref"]
             if status_code == "200":
                 assert schema_ref == "#/components/schemas/QuestionResponse"
@@ -374,28 +375,28 @@ class TestQAEndpointOpenAPICompliance:
         # Check required fields
         assert "required" in qa_request_schema
         assert "question" in qa_request_schema["required"]
-        
+
         properties = qa_request_schema["properties"]
-        
+
         # Validate question field constraints
         question_field = properties["question"]
         assert question_field["type"] == "string"
         assert question_field["minLength"] == 1
         assert question_field["maxLength"] == 1000
-        
+
         # Validate context_filters structure
         assert "context_filters" in properties
         context_filters = properties["context_filters"]
         assert context_filters["type"] == "object"
-        
+
         cf_properties = context_filters["properties"]
-        
+
         # Check document_ids array with UUID format
         doc_ids = cf_properties["document_ids"]
         assert doc_ids["type"] == "array"
         assert doc_ids["items"]["type"] == "string"
         assert doc_ids["items"]["format"] == "uuid"
-        
+
         # Validate max_citations constraints
         max_citations = properties["max_citations"]
         assert max_citations["type"] == "integer"
@@ -411,20 +412,20 @@ class TestQAEndpointOpenAPICompliance:
         assert "required" in qa_response_schema
         for field in required_fields:
             assert field in qa_response_schema["required"]
-        
+
         properties = qa_response_schema["properties"]
-        
+
         # Validate confidence score constraints
         confidence_field = properties["confidence"]
         assert confidence_field["type"] == "number"
         assert confidence_field["minimum"] == 0.0
         assert confidence_field["maximum"] == 1.0
-        
+
         # Validate citations array references Citation schema
         citations_field = properties["citations"]
         assert citations_field["type"] == "array"
         assert citations_field["items"]["$ref"] == "#/components/schemas/Citation"
-        
+
         # Validate processing_time_ms field
         assert "processing_time_ms" in properties
         processing_time = properties["processing_time_ms"]

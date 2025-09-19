@@ -6,12 +6,17 @@ and proper error handling for quota exceeded scenarios. These tests are
 designed to fail initially following TDD approach until quota endpoints are implemented.
 """
 
-import pytest
-import httpx
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 from unittest.mock import patch
 
-from tests.fixtures.api_client import APITestHelper, assert_error_response, assert_uuid_format
+import httpx
+import pytest
+
+from tests.fixtures.api_client import (
+    APITestHelper,
+    assert_error_response,
+    assert_uuid_format,
+)
 from tests.fixtures.test_data import sample_document_uuids
 
 
@@ -23,13 +28,13 @@ class TestQuotaLimit:
         self,
         api_helper: APITestHelper,
         sample_pdf_content: bytes,
-        sample_document_uuids: Dict[str, str],
+        sample_document_uuids: dict[str, str],
     ):
         """Test that POST /documents returns 429 when account has reached 200 document limit."""
         # First, simulate an account at the quota limit
         # This would normally be done by uploading 200 documents,
         # but for testing we'll mock the quota check
-        
+
         # Attempt to upload when at quota limit
         response = api_helper.upload_document(
             file_content=sample_pdf_content,
@@ -40,16 +45,16 @@ class TestQuotaLimit:
             },
             idempotency_key=sample_document_uuids["document_1"],
         )
-        
+
         # Should receive quota exceeded error
         assert response.status_code == 429
         assert_error_response(response, "quota_exceeded")
-        
+
         error_data = response.json()
         assert "error" in error_data
         assert error_data["error"]["code"] == "quota_exceeded"
         assert "200" in error_data["error"]["message"]  # Should mention limit
-        
+
         # Validate error details include current and max counts
         assert "details" in error_data["error"]
         details = error_data["error"]["details"]
@@ -62,7 +67,7 @@ class TestQuotaLimit:
         self,
         api_helper: APITestHelper,
         sample_pdf_content: bytes,
-        sample_document_uuids: Dict[str, str],
+        sample_document_uuids: dict[str, str],
     ):
         """Test that quota validation occurs before document processing begins."""
         # Attempt upload when at quota limit
@@ -75,15 +80,15 @@ class TestQuotaLimit:
             },
             idempotency_key=sample_document_uuids["document_2"],
         )
-        
+
         # Should fail immediately with 429, not create job
         assert response.status_code == 429
         error_data = response.json()
-        
+
         # No job_id should be returned since quota check failed
         assert "job_id" not in error_data
         assert "document_id" not in error_data
-        
+
         # Verify no processing job was created
         assert_error_response(response, "quota_exceeded")
 
@@ -91,7 +96,7 @@ class TestQuotaLimit:
         self,
         api_helper: APITestHelper,
         sample_pdf_content: bytes,
-        sample_document_uuids: Dict[str, str],
+        sample_document_uuids: dict[str, str],
     ):
         """Test that quota exceeded error message includes current and max document counts."""
         # Mock different quota scenarios
@@ -99,7 +104,7 @@ class TestQuotaLimit:
             {"current": 200, "max": 200},  # At limit
             {"current": 199, "max": 200},  # Would exceed with this upload
         ]
-        
+
         for scenario in test_scenarios:
             response = api_helper.upload_document(
                 file_content=sample_pdf_content,
@@ -110,15 +115,15 @@ class TestQuotaLimit:
                 },
                 idempotency_key=sample_document_uuids["content_1"],
             )
-            
+
             if scenario["current"] >= scenario["max"]:
                 assert response.status_code == 429
                 error_data = response.json()
-                
+
                 # Validate detailed error information
                 assert error_data["error"]["code"] == "quota_exceeded"
                 assert str(scenario["max"]) in error_data["error"]["message"]
-                
+
                 details = error_data["error"]["details"]
                 assert details["current_count"] >= scenario["current"]
                 assert details["max_allowed"] == scenario["max"]
@@ -127,7 +132,7 @@ class TestQuotaLimit:
         self,
         api_helper: APITestHelper,
         sample_pdf_content: bytes,
-        sample_document_uuids: Dict[str, str],
+        sample_document_uuids: dict[str, str],
     ):
         """Test that quota enforcement is per account with API key isolation."""
         # Test with primary API key (at quota)
@@ -137,17 +142,17 @@ class TestQuotaLimit:
             metadata={"title": "Primary Account Test"},
             idempotency_key=sample_document_uuids["document_3"],
         )
-        
+
         # Should fail for primary account
         assert primary_response.status_code == 429
-        
+
         # Create helper with different API key
         different_api_helper = APITestHelper(
             client=api_helper.client,
             base_url=api_helper.base_url,
             api_key="different-test-api-key-67890",
         )
-        
+
         # Test with different API key (fresh quota)
         different_response = different_api_helper.upload_document(
             file_content=sample_pdf_content,
@@ -155,7 +160,7 @@ class TestQuotaLimit:
             metadata={"title": "Different Account Test"},
             idempotency_key=sample_document_uuids["job_2"],
         )
-        
+
         # Should succeed for different account (or fail with auth error, not quota)
         # The key point is quota errors are account-specific
         if different_response.status_code == 429:
@@ -175,7 +180,7 @@ class TestQuotaLimit:
         self,
         api_helper: APITestHelper,
         sample_pdf_content: bytes,
-        sample_document_uuids: Dict[str, str],
+        sample_document_uuids: dict[str, str],
     ):
         """Test that quota count decreases after document deletion."""
         # First, verify we're at quota limit
@@ -185,28 +190,28 @@ class TestQuotaLimit:
             metadata={"title": "Quota Reset Test"},
             idempotency_key=sample_document_uuids["content_2"],
         )
-        
+
         assert upload_response.status_code == 429
         initial_error = upload_response.json()
         initial_count = initial_error["error"]["details"]["current_count"]
         assert initial_count == 200
-        
+
         # Get a list of existing documents to delete one
         # In a real scenario, we'd have documents to delete
         # For this test, we'll assume there's at least one document
         test_document_id = sample_document_uuids["document_1"]
-        
+
         # Delete a document
         delete_response = api_helper.delete_document(test_document_id)
-        
+
         # Should succeed or return 404 if document doesn't exist
         assert delete_response.status_code in [200, 404]
-        
+
         if delete_response.status_code == 200:
             # Wait a moment for quota to update (if async)
             import time
             time.sleep(1)
-            
+
             # Try upload again - should work now or show reduced count
             retry_response = api_helper.upload_document(
                 file_content=sample_pdf_content,
@@ -214,7 +219,7 @@ class TestQuotaLimit:
                 metadata={"title": "Post-Deletion Test"},
                 idempotency_key=sample_document_uuids["content_3"],
             )
-            
+
             if retry_response.status_code == 429:
                 # If still failing, count should be reduced
                 retry_error = retry_response.json()
@@ -228,11 +233,11 @@ class TestQuotaLimit:
         self,
         api_helper: APITestHelper,
         sample_pdf_content: bytes,
-        sample_document_uuids: Dict[str, str],
+        sample_document_uuids: dict[str, str],
     ):
         """Test quota validation behavior with idempotency keys."""
         idempotency_key = sample_document_uuids["job_1"]
-        
+
         # First attempt at quota limit
         first_response = api_helper.upload_document(
             file_content=sample_pdf_content,
@@ -240,9 +245,9 @@ class TestQuotaLimit:
             metadata={"title": "Idempotency Quota Test"},
             idempotency_key=idempotency_key,
         )
-        
+
         assert first_response.status_code == 429
-        
+
         # Retry with same idempotency key
         retry_response = api_helper.upload_document(
             file_content=sample_pdf_content,
@@ -250,10 +255,10 @@ class TestQuotaLimit:
             metadata={"title": "Idempotency Quota Test"},
             idempotency_key=idempotency_key,
         )
-        
+
         # Should return same error (idempotent)
         assert retry_response.status_code == 429
-        
+
         # Error details should be consistent
         first_error = first_response.json()
         retry_error = retry_response.json()
@@ -263,12 +268,12 @@ class TestQuotaLimit:
         self,
         api_helper: APITestHelper,
         sample_pdf_content: bytes,
-        sample_document_uuids: Dict[str, str],
+        sample_document_uuids: dict[str, str],
     ):
         """Test behavior when approaching quota limit (e.g., at 199/200)."""
         # This test simulates being near the quota limit
         # In practice, this would require setting up an account with 199 documents
-        
+
         # Mock scenario: account has 199 documents
         response = api_helper.upload_document(
             file_content=sample_pdf_content,
@@ -276,14 +281,14 @@ class TestQuotaLimit:
             metadata={"title": "Near Quota Test"},
             idempotency_key=sample_document_uuids["content_1"],
         )
-        
+
         # Could succeed (bringing to 200) or fail if already at 200
         if response.status_code == 201:
             # Upload succeeded, now at limit
             upload_data = response.json()
             assert_uuid_format(upload_data["document_id"])
             assert_uuid_format(upload_data["job_id"])
-            
+
             # Next upload should fail
             next_response = api_helper.upload_document(
                 file_content=sample_pdf_content,
@@ -292,7 +297,7 @@ class TestQuotaLimit:
                 idempotency_key=sample_document_uuids["content_2"],
             )
             assert next_response.status_code == 429
-            
+
         elif response.status_code == 429:
             # Already at quota
             assert_error_response(response, "quota_exceeded")
@@ -303,7 +308,7 @@ class TestQuotaLimit:
         self,
         api_helper: APITestHelper,
         sample_pdf_content: bytes,
-        sample_document_uuids: Dict[str, str],
+        sample_document_uuids: dict[str, str],
     ):
         """Test that quota exceeded errors include request ID for tracking."""
         response = api_helper.upload_document(
@@ -312,10 +317,10 @@ class TestQuotaLimit:
             metadata={"title": "Request ID Test"},
             idempotency_key=sample_document_uuids["job_2"],
         )
-        
+
         assert response.status_code == 429
         error_data = response.json()
-        
+
         # Should include request ID for support/debugging
         assert "request_id" in error_data["error"]
         assert len(error_data["error"]["request_id"]) > 0
@@ -350,10 +355,10 @@ def multiple_api_keys():
 
 
 # Helper function to simulate quota state
-def simulate_quota_state(api_helper: APITestHelper, document_count: int) -> List[str]:
+def simulate_quota_state(api_helper: APITestHelper, document_count: int) -> list[str]:
     """
     Helper to simulate an account with a specific document count.
-    
+
     In a real implementation, this would upload documents to reach the target count.
     For testing, this serves as a placeholder for quota state setup.
     """
@@ -363,5 +368,5 @@ def simulate_quota_state(api_helper: APITestHelper, document_count: int) -> List
     for i in range(document_count):
         # Simulate document upload (would be actual uploads in real scenario)
         document_ids.append(f"simulated-doc-{i:03d}")
-    
+
     return document_ids

@@ -6,7 +6,7 @@ for testing API endpoints against OpenAPI specifications.
 """
 
 import os
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 from urllib.parse import urljoin
 
 import httpx
@@ -28,7 +28,7 @@ def api_key() -> str:
 
 
 @pytest.fixture
-def auth_headers(api_key: str) -> Dict[str, str]:
+def auth_headers(api_key: str) -> dict[str, str]:
     """Authentication headers for API requests."""
     return {
         "X-API-Key": api_key,
@@ -37,7 +37,7 @@ def auth_headers(api_key: str) -> Dict[str, str]:
 
 
 @pytest.fixture
-def multipart_auth_headers(api_key: str) -> Dict[str, str]:
+def multipart_auth_headers(api_key: str) -> dict[str, str]:
     """Authentication headers for multipart requests (without Content-Type)."""
     return {
         "X-API-Key": api_key,
@@ -45,7 +45,7 @@ def multipart_auth_headers(api_key: str) -> Dict[str, str]:
 
 
 @pytest.fixture
-def idempotency_headers(api_key: str) -> Dict[str, str]:
+def idempotency_headers(api_key: str) -> dict[str, str]:
     """Headers with idempotency key for upload requests."""
     return {
         "X-API-Key": api_key,
@@ -81,14 +81,14 @@ async def async_test_api_client(base_url: str) -> httpx.AsyncClient:
 
 
 @pytest.fixture
-def authenticated_client(test_api_client: httpx.Client, auth_headers: Dict[str, str]) -> httpx.Client:
+def authenticated_client(test_api_client: httpx.Client, auth_headers: dict[str, str]) -> httpx.Client:
     """HTTP client pre-configured with authentication headers."""
     test_api_client.headers.update(auth_headers)
     return test_api_client
 
 
 @pytest.fixture
-async def async_authenticated_client(base_url: str, auth_headers: Dict[str, str]) -> httpx.AsyncClient:
+async def async_authenticated_client(base_url: str, auth_headers: dict[str, str]) -> httpx.AsyncClient:
     """Async HTTP client pre-configured with authentication headers."""
     async with httpx.AsyncClient(
         base_url=base_url,
@@ -104,71 +104,71 @@ async def async_authenticated_client(base_url: str, auth_headers: Dict[str, str]
 
 class APITestHelper:
     """Helper class for API testing operations."""
-    
+
     def __init__(self, client: httpx.Client, base_url: str, api_key: str):
         self.client = client
         self.base_url = base_url
         self.api_key = api_key
-    
+
     def get_endpoint_url(self, path: str) -> str:
         """Get full URL for an API endpoint."""
         return urljoin(self.base_url, path.lstrip("/"))
-    
+
     def make_authenticated_request(
         self,
         method: str,
         path: str,
-        headers: Optional[Dict[str, str]] = None,
+        headers: Optional[dict[str, str]] = None,
         **kwargs
     ) -> httpx.Response:
         """Make an authenticated request to the API."""
         request_headers = {"X-API-Key": self.api_key}
         if headers:
             request_headers.update(headers)
-        
+
         return self.client.request(
             method=method,
             url=self.get_endpoint_url(path),
             headers=request_headers,
             **kwargs
         )
-    
+
     def upload_document(
         self,
         file_content: bytes,
         filename: str = "test.pdf",
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
         idempotency_key: Optional[str] = None,
     ) -> httpx.Response:
         """Upload a document via the API."""
         import json
-        
+
         headers = {"X-API-Key": self.api_key}
         if idempotency_key:
             headers["Idempotency-Key"] = idempotency_key
-        
+
         files = {
             "file": (filename, file_content, "application/pdf")
         }
-        
+
         data = {}
         if metadata:
             data["metadata"] = json.dumps(metadata)
-        
+
         return self.client.post(
             url=self.get_endpoint_url("/documents"),
             headers=headers,
             files=files,
             data=data,
         )
-    
+
     def get_job_status(self, job_id: str) -> httpx.Response:
         """Get job status via the API."""
         return self.make_authenticated_request(
             "GET",
             f"/jobs/{job_id}"
         )
-    
+
     def search_documents(
         self,
         query: str,
@@ -178,59 +178,59 @@ class APITestHelper:
     ) -> httpx.Response:
         """Search documents via the API."""
         search_params = {"query": query}
-        
+
         if content_types:
             search_params["content_types"] = ",".join(content_types)
-        
+
         if document_ids:
             search_params["document_ids"] = ",".join(document_ids)
-        
+
         search_params.update(params)
-        
+
         return self.make_authenticated_request(
             "GET",
             "/search",
             params=search_params,
         )
-    
+
     def ask_question(
         self,
         question: str,
-        context_filters: Optional[Dict[str, Any]] = None,
+        context_filters: Optional[dict[str, Any]] = None,
         **kwargs
     ) -> httpx.Response:
         """Ask a question via the Q&A API."""
         payload = {"question": question}
-        
+
         if context_filters:
             payload["context_filters"] = context_filters
-        
+
         payload.update(kwargs)
-        
+
         return self.make_authenticated_request(
             "POST",
             "/qa",
             json=payload,
         )
-    
+
     def get_document(self, document_id: str) -> httpx.Response:
         """Get document metadata via the API."""
         return self.make_authenticated_request(
             "GET",
             f"/documents/{document_id}"
         )
-    
+
     def delete_document(self, document_id: str) -> httpx.Response:
         """Delete a document via the API."""
         return self.make_authenticated_request(
             "DELETE",
             f"/documents/{document_id}"
         )
-    
+
     def check_health(self) -> httpx.Response:
         """Check API health status (no authentication required)."""
         return self.client.get(self.get_endpoint_url("/healthz"))
-    
+
     def get_metrics(self) -> httpx.Response:
         """Get metrics endpoint (requires authentication)."""
         return self.make_authenticated_request("GET", "/metrics")
@@ -244,64 +244,64 @@ def api_helper(test_api_client: httpx.Client, base_url: str, api_key: str) -> AP
 
 class AsyncAPITestHelper:
     """Async helper class for API testing operations."""
-    
+
     def __init__(self, client: httpx.AsyncClient, base_url: str, api_key: str):
         self.client = client
         self.base_url = base_url
         self.api_key = api_key
-    
+
     def get_endpoint_url(self, path: str) -> str:
         """Get full URL for an API endpoint."""
         return urljoin(self.base_url, path.lstrip("/"))
-    
+
     async def make_authenticated_request(
         self,
         method: str,
         path: str,
-        headers: Optional[Dict[str, str]] = None,
+        headers: Optional[dict[str, str]] = None,
         **kwargs
     ) -> httpx.Response:
         """Make an authenticated request to the API."""
         request_headers = {"X-API-Key": self.api_key}
         if headers:
             request_headers.update(headers)
-        
+
         return await self.client.request(
             method=method,
             url=self.get_endpoint_url(path),
             headers=request_headers,
             **kwargs
         )
-    
+
     async def upload_document(
         self,
         file_content: bytes,
         filename: str = "test.pdf",
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
         idempotency_key: Optional[str] = None,
     ) -> httpx.Response:
         """Upload a document via the API."""
         import json
-        
+
         headers = {"X-API-Key": self.api_key}
         if idempotency_key:
             headers["Idempotency-Key"] = idempotency_key
-        
+
         files = {
             "file": (filename, file_content, "application/pdf")
         }
-        
+
         data = {}
         if metadata:
             data["metadata"] = json.dumps(metadata)
-        
+
         return await self.client.post(
             url=self.get_endpoint_url("/documents"),
             headers=headers,
             files=files,
             data=data,
         )
-    
+
     async def search_documents(
         self,
         query: str,
@@ -311,21 +311,21 @@ class AsyncAPITestHelper:
     ) -> httpx.Response:
         """Search documents via the API."""
         search_params = {"query": query}
-        
+
         if content_types:
             search_params["content_types"] = ",".join(content_types)
-        
+
         if document_ids:
             search_params["document_ids"] = ",".join(document_ids)
-        
+
         search_params.update(params)
-        
+
         return await self.make_authenticated_request(
             "GET",
             "/search",
             params=search_params,
         )
-    
+
     async def check_health(self) -> httpx.Response:
         """Check API health status (no authentication required)."""
         return await self.client.get(self.get_endpoint_url("/healthz"))
@@ -361,7 +361,7 @@ def invalid_auth_client(test_api_client: httpx.Client) -> httpx.Client:
 
 
 @pytest.fixture
-def rate_limit_headers() -> Dict[str, str]:
+def rate_limit_headers() -> dict[str, str]:
     """Headers for testing rate limiting scenarios."""
     return {
         "X-Rate-Limit-Burst": "true",  # Custom header to trigger rate limiting in tests
@@ -374,7 +374,7 @@ def assert_response_structure(response: httpx.Response, expected_fields: list[st
     """Assert that response JSON contains expected fields."""
     assert response.headers.get("content-type", "").startswith("application/json")
     response_data = response.json()
-    
+
     for field in expected_fields:
         assert field in response_data, f"Missing field '{field}' in response"
 
@@ -383,7 +383,7 @@ def assert_error_response(response: httpx.Response, expected_code: str) -> None:
     """Assert that response is a valid error response with expected code."""
     assert response.headers.get("content-type", "").startswith("application/json")
     response_data = response.json()
-    
+
     assert "error" in response_data
     assert "code" in response_data["error"]
     assert "message" in response_data["error"]

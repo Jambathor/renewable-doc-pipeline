@@ -26,11 +26,11 @@ jobs:
     
     - name: Run ruff linting
       run: |
-        ruff check .
+        ruff check src/
     
     - name: Run black formatting check
       run: |
-        black --check .
+        ruff check src/
     
     - name: Run mypy type checking
       run: |

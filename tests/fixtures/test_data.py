@@ -13,7 +13,7 @@ import pytest
 
 
 @pytest.fixture
-def sample_document_uuids() -> Dict[str, str]:
+def sample_document_uuids() -> dict[str, str]:
     """Sample UUIDs for document testing in proper format."""
     return {
         "document_1": "550e8400-e29b-41d4-a716-446655440000",
@@ -28,7 +28,7 @@ def sample_document_uuids() -> Dict[str, str]:
 
 
 @pytest.fixture
-def sample_document_metadata() -> Dict[str, Any]:
+def sample_document_metadata() -> dict[str, Any]:
     """Sample document metadata matching OpenAPI schema."""
     return {
         "title": "Solar Energy Efficiency Report 2024",
@@ -39,7 +39,7 @@ def sample_document_metadata() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def sample_document_upload_data(sample_document_uuids: Dict[str, str]) -> Dict[str, Any]:
+def sample_document_upload_data(sample_document_uuids: dict[str, str]) -> dict[str, Any]:
     """Sample document upload response data."""
     return {
         "document_id": sample_document_uuids["document_1"],
@@ -52,7 +52,7 @@ def sample_document_upload_data(sample_document_uuids: Dict[str, str]) -> Dict[s
 
 
 @pytest.fixture
-def sample_job_status_data(sample_document_uuids: Dict[str, str]) -> Dict[str, Any]:
+def sample_job_status_data(sample_document_uuids: dict[str, str]) -> dict[str, Any]:
     """Sample job status response data."""
     return {
         "job_id": sample_document_uuids["job_1"],
@@ -68,7 +68,7 @@ def sample_job_status_data(sample_document_uuids: Dict[str, str]) -> Dict[str, A
 
 
 @pytest.fixture
-def sample_failed_job_status_data(sample_document_uuids: Dict[str, str]) -> Dict[str, Any]:
+def sample_failed_job_status_data(sample_document_uuids: dict[str, str]) -> dict[str, Any]:
     """Sample failed job status response data."""
     return {
         "job_id": sample_document_uuids["job_2"],
@@ -84,7 +84,7 @@ def sample_failed_job_status_data(sample_document_uuids: Dict[str, str]) -> Dict
 
 
 @pytest.fixture
-def sample_search_results(sample_document_uuids: Dict[str, str]) -> Dict[str, Any]:
+def sample_search_results(sample_document_uuids: dict[str, str]) -> dict[str, Any]:
     """Sample search response data matching OpenAPI schema."""
     return {
         "query": "solar panel efficiency trends",
@@ -147,7 +147,7 @@ def sample_search_results(sample_document_uuids: Dict[str, str]) -> Dict[str, An
 
 
 @pytest.fixture
-def sample_question_request() -> Dict[str, Any]:
+def sample_question_request() -> dict[str, Any]:
     """Sample Q&A question request data."""
     return {
         "question": "What are the latest efficiency improvements in solar panel technology?",
@@ -164,7 +164,7 @@ def sample_question_request() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def sample_question_response(sample_document_uuids: Dict[str, str]) -> Dict[str, Any]:
+def sample_question_response(sample_document_uuids: dict[str, str]) -> dict[str, Any]:
     """Sample Q&A response data matching OpenAPI schema."""
     return {
         "question": "What are the latest efficiency improvements in solar panel technology?",
@@ -203,7 +203,7 @@ def sample_question_response(sample_document_uuids: Dict[str, str]) -> Dict[str,
 
 
 @pytest.fixture
-def sample_document_response(sample_document_uuids: Dict[str, str]) -> Dict[str, Any]:
+def sample_document_response(sample_document_uuids: dict[str, str]) -> dict[str, Any]:
     """Sample document metadata response data."""
     return {
         "document_id": sample_document_uuids["document_1"],
@@ -222,7 +222,7 @@ def sample_document_response(sample_document_uuids: Dict[str, str]) -> Dict[str,
 
 
 @pytest.fixture
-def sample_deletion_response(sample_document_uuids: Dict[str, str]) -> Dict[str, Any]:
+def sample_deletion_response(sample_document_uuids: dict[str, str]) -> dict[str, Any]:
     """Sample document deletion response data."""
     return {
         "document_id": sample_document_uuids["document_1"],
@@ -233,7 +233,7 @@ def sample_deletion_response(sample_document_uuids: Dict[str, str]) -> Dict[str,
 
 
 @pytest.fixture
-def sample_health_response() -> Dict[str, Any]:
+def sample_health_response() -> dict[str, Any]:
     """Sample health check response data."""
     return {
         "status": "healthy",
@@ -249,7 +249,7 @@ def sample_health_response() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def sample_unhealthy_response() -> Dict[str, Any]:
+def sample_unhealthy_response() -> dict[str, Any]:
     """Sample unhealthy health check response data."""
     return {
         "status": "unhealthy",
@@ -265,7 +265,7 @@ def sample_unhealthy_response() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def sample_error_response() -> Dict[str, Any]:
+def sample_error_response() -> dict[str, Any]:
     """Sample error response data."""
     return {
         "error": {
@@ -337,12 +337,12 @@ endobj
 
 xref
 0 6
-0000000000 65535 f 
-0000000010 00000 n 
-0000000079 00000 n 
-0000000136 00000 n 
-0000000271 00000 n 
-0000000349 00000 n 
+0000000000 65535 f
+0000000010 00000 n
+0000000079 00000 n
+0000000136 00000 n
+0000000271 00000 n
+0000000349 00000 n
 trailer
 <<
 /Size 6
@@ -354,7 +354,7 @@ startxref
 
 
 @pytest.fixture
-def search_query_params() -> Dict[str, Any]:
+def search_query_params() -> dict[str, Any]:
     """Sample search query parameters for testing."""
     return {
         "query": "solar efficiency trends",
@@ -367,7 +367,7 @@ def search_query_params() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def invalid_search_params() -> Dict[str, Any]:
+def invalid_search_params() -> dict[str, Any]:
     """Invalid search parameters for error testing."""
     return {
         "query": "",  # Empty query
@@ -378,10 +378,10 @@ def invalid_search_params() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def multipart_form_data(sample_pdf_content: bytes, sample_document_metadata: Dict[str, Any]) -> Dict[str, Any]:
+def multipart_form_data(sample_pdf_content: bytes, sample_document_metadata: dict[str, Any]) -> dict[str, Any]:
     """Sample multipart form data for document upload."""
     import json
-    
+
     return {
         "files": {
             "file": ("solar_report_2024.pdf", sample_pdf_content, "application/pdf")
