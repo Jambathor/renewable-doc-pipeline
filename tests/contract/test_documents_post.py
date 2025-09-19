@@ -54,8 +54,6 @@ class TestDocumentsPost:
 
     def test_upload_document_success_response_schema(self, openapi_spec, sample_pdf_file, valid_document_metadata):
         """Test T009: Validate successful upload response matches OpenAPI schema."""
-        # This test will FAIL - endpoint doesn't exist yet
-
         # Get expected response schema from OpenAPI spec
         upload_response_schema = openapi_spec["components"]["schemas"]["DocumentUploadResponse"]
 
@@ -67,27 +65,35 @@ class TestDocumentsPost:
             "Idempotency-Key": str(uuid.uuid4())
         }
 
-        # This request will fail since the endpoint doesn't exist
+        # Test the actual endpoint
         import httpx
-        with pytest.raises((httpx.ConnectError, httpx.RequestError)):
-            response = httpx.post(
-                "http://localhost:8000/documents",
-                files=files,
-                data=data,
-                headers=headers,
-                timeout=30.0
-            )
+        response = httpx.post(
+            "http://localhost:8000/documents",
+            files=files,
+            data=data,
+            headers=headers,
+            timeout=30.0
+        )
 
-            # If endpoint existed, would validate like this:
-            # assert response.status_code == 201
-            # response_data = response.json()
-            # validate(response_data, upload_response_schema)
+        # Validate successful response
+        assert response.status_code == 201
+        response_data = response.json()
+        validate(response_data, upload_response_schema)
 
-            # Verify UUID format for content_id fields
-            # assert "document_id" in response_data
-            # uuid.UUID(response_data["document_id"])  # Validates UUID format
-            # assert "job_id" in response_data
-            # uuid.UUID(response_data["job_id"])
+        # Verify UUID format for content_id fields
+        assert "document_id" in response_data
+        uuid.UUID(response_data["document_id"])  # Validates UUID format
+        assert "job_id" in response_data
+        uuid.UUID(response_data["job_id"])
+
+        # Verify required fields are present
+        assert "filename" in response_data
+        assert "file_size" in response_data
+        assert "status" in response_data
+        assert "upload_time" in response_data
+
+        # Verify status is valid enum value
+        assert response_data["status"] in ["uploaded", "queued"]
 
     def test_upload_document_multipart_content_type(self, openapi_spec):
         """Test T009: Validate multipart/form-data content type requirement."""
