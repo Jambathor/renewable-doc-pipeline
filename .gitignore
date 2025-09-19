@@ -1,2 +1,74 @@
+# Python
 .venv/
 .python-version
+__pycache__/
+*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+terraform.tfvars
+*.tfplan
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Large files and archives
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+*.csv
+*.xlsx
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.tif
+*.tiff
+*.mov
+*.mp4
+*.avi
+*.mkv
+
+# Monitoring data
+infrastructure/monitoring/prometheus/data/
+infrastructure/monitoring/grafana/data/
+infrastructure/monitoring/*/data/
+
+# Docker
+*.dockerfile.backup
+docker-compose.override.yml
+
+# Temporary files
+tmp/
+temp/
+*.tmp
